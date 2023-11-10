@@ -18,11 +18,8 @@ jobs:
       - name: Install caprover
         run: sudo npm install -g caprover
 
-      - name: Install dependencies
-        run: cd server && bun install
-
       - name: Create tar
-        run: tar -cvf ./deploy.tar --exclude='*.map' captain-definition package.json bun.lockb Dockerfile index.ts tsconfig.json
+        run: tar -cvf ./deploy.tar --exclude='node_modules' server/*
 
       - name: Deploy
         run: caprover deploy -h ${{ secrets.CAPROVER_SERVER_PROD }} -p ${{ secrets.CAPROVER_PASSWORD_PROD }} -a omegle-server -t ./deploy.tar
