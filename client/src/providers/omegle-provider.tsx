@@ -168,7 +168,6 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
     <OmegleProviderContext.Provider
       value={{
         sendMessage: (message: string) => {
-          clear()
           ws.sendJsonMessage({
             type: 'message',
             payload: {
@@ -184,6 +183,7 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
         },
         startCall: () => {
           console.info('Starting call')
+          clear()
           ws.sendJsonMessage({
             id,
             type: 'call'
