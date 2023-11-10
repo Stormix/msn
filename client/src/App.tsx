@@ -43,7 +43,7 @@ const App = () => {
           })
           break
         case 'id':
-          setId(data.data)
+          setId(data.id)
           break
         case 'offer':
           setStrangerId(data.payload)
