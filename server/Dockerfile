@@ -24,4 +24,8 @@ COPY --from=prerelease /usr/src/app/package.json .
 # run the app
 USER bun
 
+ARG PORT=${PORT}
+
+EXPOSE ${PORT}
+
 ENTRYPOINT [ "bun", "run", "index.ts" ]
