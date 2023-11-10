@@ -132,7 +132,7 @@ const App = () => {
         <div className="flex flex-row h-full gap-8">
           <div className="w-1/4 flex flex-col gap-8">
             <div className="bg-accent text-white h-72 w-full">
-              <video autoPlay playsInline muted className="w-full h-full" id="stranger-video" ref={strangerRef} />
+              <video autoPlay playsInline className="w-full h-full" id="stranger-video" ref={strangerRef} />
             </div>
             <div className="bg-accent text-white h-72 w-full">
               <video autoPlay playsInline muted className="w-full h-full" id="me-video" ref={meRef} />
