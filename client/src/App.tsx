@@ -80,7 +80,7 @@ const App = () => {
       setPeer(
         new Peer(id, {
           host: 'peer.lab.stormix.dev',
-          port: 80,
+          port: 443,
           path: '/',
           debug: 3
         })
