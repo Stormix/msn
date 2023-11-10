@@ -4,8 +4,14 @@ import { nanoid } from 'nanoid'
 
 type WebSocket = ServerWebSocket<{ id: string }>
 
+interface Client {
+  id: string
+  name?: string
+  ws: WebSocket
+}
+
 const main = async () => {
-  const clients: Record<string, WebSocket> = {}
+  const clients: Record<string, Client> = {}
   Bun.serve({
     port: env.PORT ?? 9000,
     fetch(req, server) {
@@ -26,6 +32,10 @@ const main = async () => {
         console.log('WS Message received', message)
         const { type, payload } = JSON.parse(message as string)
         switch (type) {
+          case 'name':
+            clients[ws.data.id].name = payload
+
+            break
           case 'message': {
             const { id, message } = payload
             const client = clients[id]
@@ -35,11 +45,12 @@ const main = async () => {
               return
             }
 
-            client.send(
+            client.ws.send(
               JSON.stringify({
                 type: 'message',
                 payload: {
                   id: ws.data.id,
+                  name: clients[ws.data.id].name ?? ws.data.id,
                   message
                 }
               })
@@ -55,20 +66,28 @@ const main = async () => {
             }
 
             // Get another random client
-            const randomClient = sample(Object.keys(clients).filter((c) => c !== ws.data.id))
-            if (!randomClient) {
+            const randomClientId = sample(Object.keys(clients).filter((c) => c !== ws.data.id))
+            if (!randomClientId) {
               ws.send(JSON.stringify({ type: 'error', payload: 'No other clients found' }))
               return
             }
 
-            client.send(JSON.stringify({ type: 'offer', payload: randomClient }))
+            client.ws.send(
+              JSON.stringify({
+                type: 'offer',
+                payload: {
+                  id: randomClientId,
+                  name: clients[randomClientId].name ?? randomClientId
+                }
+              })
+            )
             break
           }
         }
       }, // a message is received
       open(ws: WebSocket) {
         console.log('WS Client connected', ws.data.id)
-        clients[ws.data.id] = ws
+        clients[ws.data.id] = { ws, id: ws.data.id }
         ws.send(JSON.stringify({ type: 'id', id: ws.data.id }))
       },
       close(ws: WebSocket, code, message) {

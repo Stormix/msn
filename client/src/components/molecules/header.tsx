@@ -1,7 +1,10 @@
+import { ModeToggle } from './mode-toggle'
+
 const Header = () => {
   return (
-    <header>
+    <header className="flex justify-between">
       <h1>Header</h1>
+      <ModeToggle />
     </header>
   )
 }
