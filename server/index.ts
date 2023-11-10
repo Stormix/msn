@@ -79,7 +79,11 @@ const main = async () => {
   })
 }
 
-main().catch((error) => {
-  console.error(error)
-  process.exit(1)
-})
+main()
+  .then(() => {
+    console.log(`Server started on port ${env.PORT ?? 9000}`)
+  })
+  .catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })

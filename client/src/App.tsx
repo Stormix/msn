@@ -26,7 +26,7 @@ const App = () => {
 
   const { toast } = useToast()
 
-  const ws = useWebSocket('ws://localhost:9000/ws', {
+  const ws = useWebSocket('wss://omegle-server.lab.stormix.dev/ws', {
     onOpen: () => {
       console.log('opened')
     },
