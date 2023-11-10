@@ -1,0 +1,35 @@
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+defaults:
+  run:
+    shell: bash
+    working-directory: ./servers
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '18.18'
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - name: Install caprover
+        run: sudo npm install -g caprover
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Compile assets
+        run: bun build
+
+      - name: Create tar
+        run: tar -cvf ./deploy.tar --exclude='*.map' captain-definition package.json bun.lockb Dockerfile dist/*
+
+      - name: Deploy
+        run: caprover deploy -h ${{ secrets.CAPROVER_SERVER_PROD }} -p ${{ secrets.CAPROVER_PASSWORD_PROD }} -a omegle-server -t ./deploy.tar

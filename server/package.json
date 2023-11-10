@@ -21,7 +21,6 @@
   },
   "dependencies": {
     "lodash": "^4.17.21",
-    "nanoid": "^5.0.3",
-    "peer": "^1.0.1"
+    "nanoid": "^5.0.3"
   }
 }

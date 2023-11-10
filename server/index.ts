@@ -1,14 +1,13 @@
-import { ServerWebSocket } from 'bun'
+import { ServerWebSocket, env } from 'bun'
 import { sample } from 'lodash'
 import { nanoid } from 'nanoid'
-import { PeerServer } from 'peer'
 
-const peerServer = PeerServer({ port: 9000, path: '/ws' })
 type WebSocket = ServerWebSocket<{ id: string }>
 
 const main = async () => {
   const clients: Record<string, WebSocket> = {}
   Bun.serve({
+    port: env.PORT ?? 3000,
     fetch(req, server) {
       // upgrade the request to a WebSocket
       if (
@@ -77,18 +76,6 @@ const main = async () => {
         delete clients[ws.data.id]
       }
     }
-  })
-
-  peerServer.on('connection', (client) => {
-    console.log('PeerJs client connected', client.getId())
-  })
-
-  peerServer.on('disconnect', (client) => {
-    console.log('PeerJs client disconnected', client.getId())
-  })
-
-  peerServer.listen(() => {
-    console.log('Peer server is running on port 9000')
   })
 }
 

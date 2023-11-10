@@ -26,7 +26,7 @@ const App = () => {
 
   const { toast } = useToast()
 
-  const ws = useWebSocket('ws://localhost:3000', {
+  const ws = useWebSocket('ws://localhost:9000/ws', {
     onOpen: () => {
       console.log('opened')
     },
@@ -43,7 +43,7 @@ const App = () => {
           })
           break
         case 'id':
-          setId(data.id)
+          setId(data.data)
           break
         case 'offer':
           setStrangerId(data.payload)
@@ -79,9 +79,9 @@ const App = () => {
     if (stream && !peer && id) {
       setPeer(
         new Peer(id, {
-          host: 'localhost',
-          port: 9000,
-          path: '/ws',
+          host: 'peer.lab.stormix.dev',
+          port: 80,
+          path: '/',
           debug: 3
         })
       )
