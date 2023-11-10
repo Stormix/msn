@@ -37,7 +37,7 @@ const OmegleProviderContext = createContext<OmegleProviderState>(initialState)
 
 export function OmegleProvider({ children }: OmegleProviderProps) {
   const { toast } = useToast()
-  const { addMessage } = useChatStore()
+  const { addMessage, clear } = useChatStore()
   const wssEndpoint = import.meta.env.VITE_WS_ENDPOINT ?? 'wss://omegle-server.lab.stormix.dev'
 
   const meRef = useRef<HTMLVideoElement>(null)
@@ -168,6 +168,7 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
     <OmegleProviderContext.Provider
       value={{
         sendMessage: (message: string) => {
+          clear()
           ws.sendJsonMessage({
             type: 'message',
             payload: {
