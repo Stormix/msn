@@ -7,7 +7,7 @@ type WebSocket = ServerWebSocket<{ id: string }>
 const main = async () => {
   const clients: Record<string, WebSocket> = {}
   Bun.serve({
-    port: env.PORT ?? 3000,
+    port: env.PORT ?? 9000,
     fetch(req, server) {
       // upgrade the request to a WebSocket
       if (
