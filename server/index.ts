@@ -107,7 +107,7 @@ const main = async () => {
 
             if (queue.length() > 0) {
               const randomClientId = nextClient()?.id
-              if (!randomClientId) {
+              if (!randomClientId || !clients[randomClientId]) {
                 console.error('No client found in queue')
                 queue.push(client)
                 return
