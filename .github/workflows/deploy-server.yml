@@ -3,6 +3,8 @@ name: Deploy
 on:
   push:
     branches: [main]
+env:
+  VITE_WS_ENDPOINT: wss://omegle-server.lab.stormix.dev
 
 jobs:
   deploy:

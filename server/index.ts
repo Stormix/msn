@@ -36,6 +36,18 @@ const main = async () => {
   const clients: Record<string, Client> = {}
   const queue = new Queue<Client>()
 
+  const nextClient = () => {
+    // TODO: pop from queue and if disconnected, pop again
+    while (queue.length() > 0) {
+      const client = queue.pop()!
+      if (client.ws.readyState === WebSocket.OPEN) {
+        return client
+      }
+    }
+
+    return null
+  }
+
   Bun.serve({
     port: env.PORT ?? 9000,
     fetch(req, server) {
@@ -94,7 +106,12 @@ const main = async () => {
             client.state = 'searching'
 
             if (queue.length() > 0) {
-              const randomClientId = queue.pop()!.id
+              const randomClientId = nextClient()?.id
+              if (!randomClientId) {
+                console.error('No client found in queue')
+                queue.push(client)
+                return
+              }
               console.info('Found a client, current queue:', randomClientId)
               const randomClient = clients[randomClientId]
               // TODO check if client is still connected
