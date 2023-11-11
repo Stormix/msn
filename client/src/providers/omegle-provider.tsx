@@ -1,9 +1,9 @@
 import { useToast } from '@/components/ui/use-toast'
 import { useUserMedia } from '@/hooks/useUserMedia'
-import { useChatStore } from '@/lib/store'
+import { useStore } from '@/lib/store'
 import { User } from '@/types'
 import Peer, { MediaConnection } from 'peerjs'
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
+import React, { createContext, useContext, useEffect, useRef } from 'react'
 import useWebSocket from 'react-use-websocket'
 
 type OmegleProviderProps = {
@@ -12,23 +12,21 @@ type OmegleProviderProps = {
 
 type OmegleProviderState = {
   sendMessage?: (message: string) => void
-  startCall?: () => void
+  connect?: () => void
   setName?: (name: string) => void
   call?: MediaConnection
   meRef?: React.RefObject<HTMLVideoElement>
   strangerRef?: React.RefObject<HTMLVideoElement>
-  strangerId?: string | null
   stranger?: User
   me?: User
 }
 
 const initialState: OmegleProviderState = {
   sendMessage: undefined,
-  startCall: undefined,
+  connect: undefined,
   call: undefined,
   meRef: undefined,
   strangerRef: undefined,
-  strangerId: undefined,
   stranger: undefined,
   me: undefined
 }
@@ -37,132 +35,138 @@ const OmegleProviderContext = createContext<OmegleProviderState>(initialState)
 
 export function OmegleProvider({ children }: OmegleProviderProps) {
   const { toast } = useToast()
-  const { addMessage, clear } = useChatStore()
-  const wssEndpoint = import.meta.env.VITE_WS_ENDPOINT ?? 'wss://omegle-server.lab.stormix.dev'
+  const {
+    addMessage,
+    clear,
+    setMe,
+    setStranger,
+    me,
+    stranger,
+    call: currentCall,
+    peer,
+    setPeer,
+    setCall,
+    disconnect,
+    setState
+  } = useStore()
 
   const meRef = useRef<HTMLVideoElement>(null)
   const strangerRef = useRef<HTMLVideoElement>(null)
 
-  const [me, setMe] = useState<User>({
-    id: undefined,
-    name: undefined
-  })
-  const [stranger, setStranger] = useState<User>({
-    id: undefined,
-    name: undefined
-  })
+  const onMessage = (e: MessageEvent) => {
+    const { data: raw } = e
+    const data = JSON.parse(raw)
 
-  const id = me?.id
-  const strangerId = stranger?.id
-  const [peer, setPeer] = useState<Peer | null>(null)
-  const [currentCall, setCall] = useState<MediaConnection | null>(null)
-
-  const { stream } = useUserMedia({
-    audio: true,
-    video: true
-  })
-
-  const ws = useWebSocket(wssEndpoint, {
-    onOpen: () => {
-      console.log('opened')
-    },
-    shouldReconnect: () => true,
-    onMessage: (e) => {
-      const { data: raw } = e
-      const data = JSON.parse(raw)
-
-      switch (data.type) {
-        case 'message':
-          addMessage({
-            sender: data.payload.name,
-            message: data.payload.message
-          })
-          break
-        case 'id':
-          setMe({
-            ...me,
-            id: data.id
-          })
-          break
-        case 'offer':
-          setStranger({
-            id: data.payload.id,
-            name: data.payload.name
-          })
-          break
-        case 'error':
-          toast({
-            title: 'Error',
-            description: data.payload,
-            variant: 'destructive'
-          })
-          break
-      }
-    }
-  })
-
-  // TODO: REMOVE ALL THE USE EFFECTS
-
-  useEffect(() => {
-    if (stream && meRef.current) {
-      meRef.current.srcObject = stream
-    }
-
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => {
-          track.stop()
+    switch (data.type) {
+      case 'message':
+        addMessage({
+          sender: data.payload.name,
+          message: data.payload.message
         })
-      }
-    }
-  }, [stream])
+        break
+      case 'id': {
+        setMe({
+          ...me,
+          id: data.id
+        })
 
-  useEffect(() => {
-    if (stream && !peer && id) {
-      setPeer(
-        new Peer(id, {
+        const peer = new Peer(data.id, {
           host: 'peer.lab.stormix.dev',
           port: 443,
           path: '/',
-          debug: 3
+          debug: 2
         })
-      )
-    }
-  }, [peer, stream, id])
 
-  useEffect(() => {
-    if (peer) {
-      peer.on('open', (id) => {
-        console.log('My peer ID is: ' + id)
-      })
+        peer.on('open', (id) => {
+          console.log('My peer ID is: ' + id)
+        })
 
-      peer.on('call', (call) => {
-        if (!stream || currentCall) return
+        setPeer(peer)
+
+        break
+      }
+      case 'offer': {
+        if (!peer || !stream) return
+
         setStranger({
-          id: call.peer,
-          name: undefined
+          id: data.payload.id,
+          name: data.payload.name
         })
-        call.answer(stream)
-        call.on('stream', (remoteStream) => {
-          if (strangerRef.current) {
-            strangerRef.current.srcObject = remoteStream
+        setState('connected')
+
+        const call = peer.call(data.payload.id, stream as MediaStream, {
+          metadata: {
+            name: me?.name,
+            id: me?.id
           }
         })
-      })
+
+        call.on('stream', (remoteStream) => {
+          if (strangerRef.current) strangerRef.current.srcObject = remoteStream
+        })
+
+        call.on('close', () => {
+          console.info('Call closed')
+          disconnect()
+        })
+
+        setCall(call)
+        break
+      }
+      case 'error':
+        toast({
+          title: 'Error',
+          description: data.payload,
+          variant: 'destructive'
+        })
+        break
     }
-  }, [currentCall, peer, stream, toast])
+  }
+
+  const { stream } = useUserMedia({
+    constraints: {
+      audio: true,
+      video: true
+    },
+    onStream: (stream) => {
+      if (meRef.current) {
+        meRef.current.srcObject = stream
+      }
+    }
+  })
+
+  const ws = useWebSocket(import.meta.env.VITE_WS_ENDPOINT, {
+    shouldReconnect: () => true,
+    onOpen: () => {
+      console.info('Connected to websocket server.', me?.id)
+    },
+    onMessage
+  })
 
   useEffect(() => {
-    if (peer && strangerId) {
-      const call = peer.call(strangerId, stream as MediaStream)
-      call.on('stream', (remoteStream) => {
-        if (strangerRef.current) {
-          strangerRef.current.srcObject = remoteStream
-        }
+    if (!peer || !stream || me?.state === 'connected' || currentCall) return
+
+    peer?.on('call', (call) => {
+      if (me?.state !== 'searching') return
+
+      setStranger({
+        id: call.peer,
+        name: call.metadata.name
       })
+
+      call.answer(stream)
+      call.on('stream', (remoteStream) => {
+        if (strangerRef.current) strangerRef.current.srcObject = remoteStream
+      })
+      call.on('close', () => {
+        console.info('Call closed')
+        disconnect()
+      })
+
+      setState('connected')
       setCall(call)
-    }
-  }, [peer, stream, strangerId])
+    })
+  }, [currentCall, disconnect, me?.state, peer, setCall, setState, setStranger, stream])
 
   return (
     <OmegleProviderContext.Provider
@@ -171,8 +175,8 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
           ws.sendJsonMessage({
             type: 'message',
             payload: {
-              id: strangerId,
-              name: stranger.name,
+              id: stranger?.id,
+              name: stranger?.name ?? stranger?.id,
               message
             }
           })
@@ -181,17 +185,19 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
             message
           })
         },
-        startCall: () => {
-          console.info('Starting call')
+        connect: () => {
+          if (!me?.id) return
+          if (currentCall) currentCall.close()
+          setState('searching')
           clear()
           ws.sendJsonMessage({
-            id,
+            id: me?.id,
             type: 'call'
           })
         },
         setName: (name: string) => {
           ws.sendJsonMessage({
-            id,
+            id: me?.id,
             type: 'name',
             payload: name
           })
@@ -199,7 +205,6 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
         call: currentCall || undefined,
         meRef,
         strangerRef,
-        strangerId,
         stranger,
         me
       }}
@@ -209,6 +214,7 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useOmegle = () => {
   const context = useContext(OmegleProviderContext)
   if (context === undefined) throw new Error('useTheme must be used within a OmegleProvider')

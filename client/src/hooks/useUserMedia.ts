@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-interface Constraints {
-  audio?: boolean
-  video?: boolean | MediaTrackConstraints
+interface UseUserMedia {
+  constraints: MediaStreamConstraints
+  onStream?: (stream: MediaStream) => void
 }
 
-export const useUserMedia = (constraints: Constraints) => {
+export const useUserMedia = ({ constraints, onStream }: UseUserMedia) => {
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [error, setError] = useState<Error | null>(null)
 
@@ -16,6 +16,7 @@ export const useUserMedia = (constraints: Constraints) => {
       if (!didCancel) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia(constraints)
+          onStream?.(stream)
           setStream(stream)
         } catch (e) {
           setError(e as Error)
@@ -31,6 +32,6 @@ export const useUserMedia = (constraints: Constraints) => {
       ;(stream as MediaStream).getVideoTracks()?.forEach((track) => track.stop())
       ;(stream as MediaStream).getAudioTracks()?.forEach((track) => track.stop())
     }
-  }, [constraints, stream, error])
+  }, [constraints, stream, error, onStream])
   return { stream, error }
 }

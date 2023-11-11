@@ -1,15 +1,17 @@
 import { Button } from '@/components/ui/button'
 import { Form, FormControl, FormDescription, FormField, FormItem, FormMessage } from '@/components/ui/form'
-import { useChatStore } from '@/lib/store'
+import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { useOmegle } from '@/providers/omegle-provider'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Send } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import { Badge } from '../ui/badge'
 import { Textarea } from '../ui/textarea'
 import { useToast } from '../ui/use-toast'
-import NameDialog from './name-dialog'
+import SettingsDialog from './settings-dialog'
 
 const formSchema = z.object({
   message: z.string().min(1)
@@ -17,9 +19,10 @@ const formSchema = z.object({
 
 const Chat = () => {
   const ref = useRef<HTMLDivElement>(null)
-  const { messages, name } = useChatStore()
-  const { sendMessage, strangerId } = useOmegle()
+  const { messages, me } = useStore()
+  const { sendMessage, stranger } = useOmegle()
   const { toast } = useToast()
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -33,7 +36,7 @@ const Chat = () => {
   }, [messages])
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
-    if (!strangerId) {
+    if (!stranger?.id) {
       toast({
         title: 'Error',
         description: 'You are not connected to a chat.',
@@ -46,23 +49,19 @@ const Chat = () => {
   }
 
   return (
-    <div className="flex-grow flex flex-col h-full w-full max-h-full">
-      <div className="flex gap-2">
-        <span>
-          You're connected as <b>{name}</b>
-        </span>
-        <NameDialog />
-      </div>
-      <h3>Chat log: </h3>
+    <div className="flex-grow flex flex-col h-full w-full ">
+      <h3>
+        Chat log: <Badge>{me?.state}</Badge>{' '}
+      </h3>
       <div className="flex-grow flex flex-col gap-2 overflow-y-auto h-5/6 py-8" ref={ref}>
         {messages.map((message, i) => (
           <div key={i} className="flex flex-col gap-2 ">
             <span
               className={cn('font-bold', {
-                'text-accent': message.sender === strangerId
+                'text-accent': message.sender === stranger?.id || message.sender === stranger?.name
               })}
             >
-              {message.sender}:{' '}
+              {message.sender}:
             </span>
             <span>{message.message}</span>
           </div>
@@ -75,9 +74,10 @@ const Chat = () => {
               control={form.control}
               name="message"
               render={({ field }) => (
-                <FormItem className="flex-grow">
+                <FormItem className="flex flex-grow flex-col w-full justify-center md:justify-normal">
                   <FormControl>
                     <Textarea
+                      rows={4}
                       placeholder="Type your message here"
                       {...field}
                       onKeyDown={(e) => {
@@ -88,12 +88,18 @@ const Chat = () => {
                       }}
                     />
                   </FormControl>
-                  <FormDescription>This is your public display name.</FormDescription>
+                  <FormDescription className="">
+                    <span className="mr-2">
+                      You're connected as <b>{me?.name}.</b>
+                    </span>
+                    <SettingsDialog />
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" size={'lg'}>
+            <Button type="submit" size={'lg'} className="flex gap-2 w-full md:max-w-xs">
+              <Send className="w-4 h-4" />
               Send message
             </Button>
           </form>

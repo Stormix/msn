@@ -3,10 +3,10 @@ import Chat from '../molecules/chat'
 import { Button } from '../ui/button'
 
 const Home = () => {
-  const { meRef, strangerRef, call, startCall } = useOmegle()
+  const { meRef, strangerRef, call, connect: startCall } = useOmegle()
 
   return (
-    <div className="flex flex-col md:flex-row h-full max-h-full gap-8">
+    <div className="flex flex-col md:flex-row h-full gap-8">
       <div className="w-full md:w-2/5 md:max-w-2xl flex flex-col gap-4">
         <div className="flex flex-col gap-4 h-full">
           <div className="p-4 border-primary border rounded-md w-full h-1/2">

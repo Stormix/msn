@@ -4,6 +4,10 @@ export interface Message {
 }
 
 export interface User {
-  name?: string
   id?: string
+  name?: string
+}
+
+export interface Me extends User {
+  state: 'idle' | 'searching' | 'connected'
 }
