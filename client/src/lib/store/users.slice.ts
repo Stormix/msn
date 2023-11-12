@@ -1,10 +1,10 @@
-import { Me, User } from '@/types'
+import { User } from '@/types'
 import Peer, { MediaConnection } from 'peerjs'
 import { StateCreator } from 'zustand'
 import type { State } from '.'
 
 export interface UsersState {
-  me: Me | undefined
+  me: User | undefined
   stranger: User | undefined
 
   setMe: (user: User) => void
@@ -18,7 +18,6 @@ export interface UsersState {
   setPeer: (peer: Peer) => void
   setName: (name: string) => void
   disconnect: () => void
-  setState: (state: Me['state']) => void
 }
 
 export const createUsersSlice: StateCreator<State, [], [], UsersState> = (set) => ({
@@ -29,25 +28,17 @@ export const createUsersSlice: StateCreator<State, [], [], UsersState> = (set) =
   peer: undefined,
   setMe: (user: User) =>
     set({
-      me: {
-        ...user,
-        state: 'idle'
-      }
+      me: user
     }),
   setStranger: (user: User) => set({ stranger: user }),
-  setName: (name: string) => set((state) => ({ me: { ...state.me, name, state: state.me?.state ?? 'idle' } })),
+  setName: (name: string) => set((state) => ({ me: { ...(state.me as User), name } })),
   setCall: (call: MediaConnection) => set({ call }),
   setPeer: (peer: Peer) => set({ peer }),
   disconnect: () =>
-    set((state) => ({
+    set({
       stranger: undefined,
       inCall: false,
       call: undefined,
-      peer: undefined,
-      me: {
-        ...state.me,
-        state: 'idle'
-      }
-    })),
-  setState: (state: Me['state']) => set((s) => ({ me: { ...s.me, state } }))
+      peer: undefined
+    })
 })

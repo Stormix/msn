@@ -1,7 +1,7 @@
 import { useToast } from '@/components/ui/use-toast'
 import { useUserMedia } from '@/hooks/useUserMedia'
 import { useStore } from '@/lib/store'
-import { User } from '@/types'
+import { PayloadType, User } from '@/types'
 import Peer, { MediaConnection } from 'peerjs'
 import React, { createContext, useContext, useEffect, useRef } from 'react'
 import useWebSocket from 'react-use-websocket'
@@ -46,8 +46,7 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
     peer,
     setPeer,
     setCall,
-    disconnect,
-    setState
+    disconnect
   } = useStore()
 
   const meRef = useRef<HTMLVideoElement>(null)
@@ -58,62 +57,61 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
     const data = JSON.parse(raw)
 
     switch (data.type) {
-      case 'message':
+      case PayloadType.Disconnect:
+        disconnect()
+        if (strangerRef.current) strangerRef.current.srcObject = null
+        addMessage({
+          sender: 'system',
+          message: 'Stranger disconnected'
+        })
+        break
+      case PayloadType.Message:
         addMessage({
           sender: data.payload.name,
           message: data.payload.message
         })
         break
-      case 'id': {
-        setMe({
-          ...me,
-          id: data.id
-        })
+      case PayloadType.UserInfo: {
+        setMe({ ...data.payload })
+        if (!peer) {
+          const peer = new Peer(data.payload.id, {
+            host: 'peer.lab.stormix.dev',
+            port: 443,
+            path: '/',
+            debug: 2
+          })
 
-        const peer = new Peer(data.id, {
-          host: 'peer.lab.stormix.dev',
-          port: 443,
-          path: '/',
-          debug: 2
-        })
+          peer.on('open', (id) => {
+            console.log('My peer ID is: ' + id)
+          })
 
-        peer.on('open', (id) => {
-          console.log('My peer ID is: ' + id)
-        })
-
-        setPeer(peer)
-
+          setPeer(peer)
+        }
         break
       }
-      case 'offer': {
+      case PayloadType.Match: {
         if (!peer || !stream) return
-
-        setStranger({
-          id: data.payload.id,
-          name: data.payload.name
-        })
-        setState('connected')
-
+        if (currentCall) currentCall.close()
+        setStranger(data.payload)
         const call = peer.call(data.payload.id, stream as MediaStream, {
           metadata: {
             name: me?.name,
             id: me?.id
           }
         })
-
+        if (!call) return
         call.on('stream', (remoteStream) => {
           if (strangerRef.current) strangerRef.current.srcObject = remoteStream
         })
-
         call.on('close', () => {
           console.info('Call closed')
           disconnect()
+          if (strangerRef.current) strangerRef.current.srcObject = null
         })
-
         setCall(call)
         break
       }
-      case 'error':
+      case PayloadType.Error:
         toast({
           title: 'Error',
           description: data.payload,
@@ -129,9 +127,7 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
       video: true
     },
     onStream: (stream) => {
-      if (meRef.current) {
-        meRef.current.srcObject = stream
-      }
+      if (meRef.current) meRef.current.srcObject = stream
     }
   })
 
@@ -147,13 +143,7 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
     if (!peer || !stream || me?.state === 'connected' || currentCall) return
 
     peer?.on('call', (call) => {
-      if (me?.state !== 'searching') return
-
-      setStranger({
-        id: call.peer,
-        name: call.metadata.name
-      })
-
+      if (!call) return
       call.answer(stream)
       call.on('stream', (remoteStream) => {
         if (strangerRef.current) strangerRef.current.srcObject = remoteStream
@@ -161,19 +151,18 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
       call.on('close', () => {
         console.info('Call closed')
         disconnect()
+        if (strangerRef.current) strangerRef.current.srcObject = null
       })
-
-      setState('connected')
       setCall(call)
     })
-  }, [currentCall, disconnect, me?.state, peer, setCall, setState, setStranger, stream])
+  }, [currentCall, disconnect, me?.state, peer, setCall, setStranger, stream])
 
   return (
     <OmegleProviderContext.Provider
       value={{
         sendMessage: (message: string) => {
           ws.sendJsonMessage({
-            type: 'message',
+            type: PayloadType.Message,
             payload: {
               id: stranger?.id,
               name: stranger?.name ?? stranger?.id,
@@ -186,20 +175,22 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
           })
         },
         connect: () => {
+          console.log('Connecting...', me, currentCall)
           if (!me?.id) return
           if (currentCall) currentCall.close()
-          setState('searching')
           clear()
           ws.sendJsonMessage({
-            id: me?.id,
-            type: 'call'
+            payload: {
+              id: me?.id
+            },
+            type: PayloadType.Queue
           })
         },
         setName: (name: string) => {
           ws.sendJsonMessage({
             id: me?.id,
-            type: 'name',
-            payload: name
+            type: PayloadType.UserInfo,
+            payload: { name }
           })
         },
         call: currentCall || undefined,

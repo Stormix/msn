@@ -12,6 +12,7 @@ import { Badge } from '../ui/badge'
 import { Textarea } from '../ui/textarea'
 import { useToast } from '../ui/use-toast'
 import SettingsDialog from './settings-dialog'
+import UserCount from './user-count'
 
 const formSchema = z.object({
   message: z.string().min(1)
@@ -50,9 +51,12 @@ const Chat = () => {
 
   return (
     <div className="flex-grow flex flex-col h-full w-full ">
-      <h3>
-        Chat log: <Badge>{me?.state}</Badge>{' '}
-      </h3>
+      <div className="flex justify-between gap-2 text-xl">
+        <h3>
+          Chat log: <Badge>{me?.state}</Badge>{' '}
+        </h3>
+        <UserCount />
+      </div>
       <div className="flex-grow flex flex-col gap-2 overflow-y-auto h-5/6 py-8" ref={ref}>
         {messages.map((message, i) => (
           <div key={i} className="flex flex-col gap-2 ">

@@ -3,11 +3,12 @@
   "module": "index.ts",
   "type": "module",
   "scripts": {
-    "start": "bun run index.ts",
-    "dev": "bun --watch run index.ts"
+    "start": "bun run src/index.ts",
+    "dev": "bun --watch run src/index.ts"
   },
   "devDependencies": {
     "@types/lodash": "^4.14.201",
+    "@types/uuid": "^9.0.7",
     "@typescript-eslint/eslint-plugin": "^6.10.0",
     "@typescript-eslint/parser": "^6.10.0",
     "bun-types": "latest",
@@ -21,6 +22,6 @@
   },
   "dependencies": {
     "lodash": "^4.17.21",
-    "nanoid": "^5.0.3"
+    "unique-username-generator": "^1.2.0"
   }
 }

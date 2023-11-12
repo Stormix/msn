@@ -4,10 +4,23 @@ export interface Message {
 }
 
 export interface User {
-  id?: string
-  name?: string
+  id: string
+  name: string
+  state: UserState
 }
 
-export interface Me extends User {
-  state: 'idle' | 'searching' | 'connected'
+export enum UserState {
+  Idle = 'idle',
+  Searching = 'searching',
+  Connected = 'connected'
+}
+
+export enum PayloadType {
+  Message = 'message',
+  UserInfo = 'user-info',
+  Error = 'error',
+  Call = 'call',
+  Queue = 'queue',
+  Match = 'match',
+  Disconnect = 'disconnect'
 }
