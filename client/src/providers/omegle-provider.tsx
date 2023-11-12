@@ -1,5 +1,6 @@
 import { useToast } from '@/components/ui/use-toast'
 import { useUserMedia } from '@/hooks/useUserMedia'
+import { load } from '@/lib/nsfw'
 import { useStore } from '@/lib/store'
 import { PayloadType, User } from '@/types'
 import Peer, { MediaConnection } from 'peerjs'
@@ -20,6 +21,7 @@ type OmegleProviderState = {
   stranger?: User
   me?: User
   emitTyping?: (typing: boolean) => void
+  stream?: MediaStream
 }
 
 const initialState: OmegleProviderState = {
@@ -30,7 +32,8 @@ const initialState: OmegleProviderState = {
   strangerRef: undefined,
   stranger: undefined,
   me: undefined,
-  emitTyping: undefined
+  emitTyping: undefined,
+  stream: undefined
 }
 
 const OmegleProviderContext = createContext<OmegleProviderState>(initialState)
@@ -48,7 +51,9 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
     peer,
     setPeer,
     setCall,
-    disconnect
+    disconnect,
+    model,
+    setModel
   } = useStore()
 
   const meRef = useRef<HTMLVideoElement>(null)
@@ -165,6 +170,14 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
     })
   }, [currentCall, disconnect, me?.state, peer, setCall, setStranger, stream])
 
+  useEffect(() => {
+    ;(async () => {
+      if (model) return
+      const downloadedModel = await load()
+      setModel(downloadedModel)
+    })()
+  }, [model, setModel])
+
   return (
     <OmegleProviderContext.Provider
       value={{
@@ -214,7 +227,8 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
         meRef,
         strangerRef,
         stranger,
-        me
+        me,
+        stream: stream || undefined
       }}
     >
       {children}

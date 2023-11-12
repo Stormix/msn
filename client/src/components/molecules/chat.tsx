@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Form, FormControl, FormDescription, FormField, FormItem, FormMessage } from '@/components/ui/form'
+import useNudityModerator from '@/hooks/useNudityModerator'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { useOmegle } from '@/providers/omegle-provider'
@@ -19,9 +20,11 @@ const formSchema = z.object({
 })
 
 const Chat = () => {
+  const { start } = useNudityModerator()
+
   const ref = useRef<HTMLDivElement>(null)
   const { messages, me } = useStore()
-  const { sendMessage, stranger, emitTyping: setTyping } = useOmegle()
+  const { sendMessage, stranger, emitTyping: setTyping, stream } = useOmegle()
   const { toast } = useToast()
   const [meTyping, setMeTyping] = useState(false)
 
@@ -49,6 +52,12 @@ const Chat = () => {
     // When a new message is received, scroll to the bottom of the chat
     ref?.current?.scrollTo(0, ref?.current?.scrollHeight)
   }, [messages])
+
+  useEffect(() => {
+    if (stream) {
+      start()
+    }
+  }, [start, stream])
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     if (!stranger?.id) {

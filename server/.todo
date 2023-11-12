@@ -1,6 +1,7 @@
 Features:
     ✔ UX: typing hint ... (10min) @done(23-11-12 17:17)
+    ✔ NSFW detection (1-2h) @done(23-11-12 18:25)
     - Connect to redis to handle multiple servers (30min - 1h)
-    - NSFW detection (1-2h)
     - Keywords matching + Filter by region/country/language
     - Games (similar to discord activities)
+    - MSN Emotes / Animations
