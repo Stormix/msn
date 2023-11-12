@@ -28,4 +28,4 @@ ARG PORT=${PORT}
 
 EXPOSE ${PORT}
 
-ENTRYPOINT [ "bun", "run", "index.ts" ]
+ENTRYPOINT [ "bun", "run", "src/index.ts" ]
