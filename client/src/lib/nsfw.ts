@@ -137,9 +137,9 @@ export class NSFWJS {
 
       let model: tf.LayersModel | tf.GraphModel
       if (endpoint == null) {
-        model = this.model
+        model = this.model!
       } else {
-        if (this.model.hasOwnProperty('layers') && this.intermediateModels[endpoint] == null) {
+        if (this.model!.hasOwnProperty('layers') && this.intermediateModels[endpoint] == null) {
           // @ts-ignore
           const layer = this.model.layers.find((l) => l.name === endpoint)
           this.intermediateModels[endpoint] = tf.model({
