@@ -7,6 +7,7 @@ export interface User {
   id: string
   name: string
   state: UserState
+  isTyping: boolean
 }
 
 export enum UserState {
@@ -22,5 +23,6 @@ export enum PayloadType {
   Call = 'call',
   Queue = 'queue',
   Match = 'match',
-  Disconnect = 'disconnect'
+  Disconnect = 'disconnect',
+  Typing = 'typing'
 }

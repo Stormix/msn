@@ -33,5 +33,6 @@ export enum PayloadType {
   Queue = 'queue',
   Match = 'match',
   Disconnect = 'disconnect',
-  UpdateName = 'update-name'
+  UpdateName = 'update-name',
+  Typing = 'typing'
 }

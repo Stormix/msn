@@ -19,6 +19,7 @@ type OmegleProviderState = {
   strangerRef?: React.RefObject<HTMLVideoElement>
   stranger?: User
   me?: User
+  emitTyping?: (typing: boolean) => void
 }
 
 const initialState: OmegleProviderState = {
@@ -28,7 +29,8 @@ const initialState: OmegleProviderState = {
   meRef: undefined,
   strangerRef: undefined,
   stranger: undefined,
-  me: undefined
+  me: undefined,
+  emitTyping: undefined
 }
 
 const OmegleProviderContext = createContext<OmegleProviderState>(initialState)
@@ -118,6 +120,12 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
           variant: 'destructive'
         })
         break
+      case PayloadType.Typing:
+        setStranger({
+          ...(stranger as User),
+          isTyping: data.payload.typing
+        })
+        break
     }
   }
 
@@ -160,6 +168,15 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
   return (
     <OmegleProviderContext.Provider
       value={{
+        emitTyping: (typing: boolean) => {
+          ws.sendJsonMessage({
+            type: PayloadType.Typing,
+            payload: {
+              id: stranger?.id,
+              typing
+            }
+          })
+        },
         sendMessage: (message: string) => {
           ws.sendJsonMessage({
             type: PayloadType.Message,

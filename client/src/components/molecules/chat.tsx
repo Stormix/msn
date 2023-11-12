@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { useOmegle } from '@/providers/omegle-provider'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Send } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Badge } from '../ui/badge'
@@ -21,8 +21,22 @@ const formSchema = z.object({
 const Chat = () => {
   const ref = useRef<HTMLDivElement>(null)
   const { messages, me } = useStore()
-  const { sendMessage, stranger } = useOmegle()
+  const { sendMessage, stranger, emitTyping: setTyping } = useOmegle()
   const { toast } = useToast()
+  const [meTyping, setMeTyping] = useState(false)
+
+  const debouncedTyping = useRef<NodeJS.Timeout>()
+
+  useEffect(() => {
+    if (!meTyping) return
+    if (debouncedTyping.current) {
+      clearTimeout(debouncedTyping.current)
+    }
+    debouncedTyping.current = setTimeout(() => {
+      setMeTyping(false)
+      setTyping?.(false)
+    }, 2000)
+  }, [meTyping, setTyping])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -53,11 +67,19 @@ const Chat = () => {
     <div className="flex-grow flex flex-col h-full w-full ">
       <div className="flex justify-between gap-2 text-xl">
         <h3>
-          Chat log: <Badge>{me?.state}</Badge>{' '}
+          Chat log: <Badge>{me?.state}</Badge>
         </h3>
         <UserCount />
       </div>
       <div className="flex-grow flex flex-col gap-2 overflow-y-auto h-5/6 py-8" ref={ref}>
+        <span
+          className={cn('animate-pulse ease-in-out ', {
+            visible: stranger?.isTyping,
+            hidden: !stranger?.isTyping
+          })}
+        >
+          Stranger is typing...
+        </span>
         {messages.map((message, i) => (
           <div key={i} className="flex flex-col gap-2 ">
             <span
@@ -85,6 +107,10 @@ const Chat = () => {
                       placeholder="Type your message here"
                       {...field}
                       onKeyDown={(e) => {
+                        if (!meTyping) {
+                          setMeTyping(true)
+                          setTyping?.(true)
+                        }
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault()
                           form.handleSubmit(onSubmit)()

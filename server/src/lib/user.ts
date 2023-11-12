@@ -9,6 +9,7 @@ class User implements IUser {
   ws: WebSocket
   isAlive: boolean
   history: string[] = []
+  isTyping: boolean = false
 
   constructor(id: string, ws: WebSocket) {
     this.id = id
