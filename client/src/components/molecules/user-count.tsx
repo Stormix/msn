@@ -1,10 +1,11 @@
 import { getUsers } from '@/lib/api'
+import { REFRESH_INTERVAL } from '@/lib/config'
 import { User } from '@/types'
 import { useQuery } from 'react-query'
 
 const UserCount = () => {
   const query = useQuery<User[]>('getUsers', getUsers, {
-    refetchInterval: 10_000
+    refetchInterval: REFRESH_INTERVAL
   })
 
   return (

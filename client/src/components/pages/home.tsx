@@ -1,9 +1,9 @@
-import { useOmegle } from '@/providers/omegle-provider'
+import { useWebRTC } from '@/providers/webrtc-provider'
 import Chat from '../molecules/chat'
 import { Button } from '../ui/button'
 
 const Home = () => {
-  const { meRef, strangerRef, call, connect: startCall } = useOmegle()
+  const { meRef, strangerRef, call, connect: startCall } = useWebRTC()
 
   return (
     <div className="flex flex-col md:flex-row h-full gap-8">

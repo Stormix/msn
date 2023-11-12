@@ -1,5 +1,5 @@
 import { useStore } from '@/lib/store'
-import { useOmegle } from '@/providers/omegle-provider'
+import { useWebRTC } from '@/providers/webrtc-provider'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { DialogDescription } from '@radix-ui/react-dialog'
 import { useState } from 'react'
@@ -19,7 +19,7 @@ const formSchema = z.object({
 const SettingsDialog = () => {
   const { keywords, saveSettings, me, setName } = useStore()
   const [open, setOpen] = useState(!me?.name)
-  const { setName: setChatName } = useOmegle()
+  const { setName: setChatName } = useWebRTC()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

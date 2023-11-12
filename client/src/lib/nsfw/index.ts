@@ -1,27 +1,18 @@
+// Heavily based on: https://github.com/infinitered/nsfwjs/
+// License: MIT
+// Author: Infinite Red, Inc.
+
 import * as tf from '@tensorflow/tfjs'
 
-export const NSFW_CLASSES: { [classId: number]: 'Drawing' | 'Hentai' | 'Neutral' | 'Porn' | 'Sexy' } = {
-  0: 'Drawing',
-  1: 'Hentai',
-  2: 'Neutral',
-  3: 'Porn',
-  4: 'Sexy'
+export enum NSFW_CLASSES {
+  Drawing,
+  Hentai,
+  Neutral,
+  Porn,
+  Sexy
 }
 
-export type frameResult = {
-  index: number
-  totalFrames: number
-  predictions: Array<predictionType>
-  image: HTMLCanvasElement | ImageData
-}
-
-export type classifyConfig = {
-  topk?: number
-  fps?: number
-  onFrame?: (result: frameResult) => any
-}
-
-interface nsfwjsOptions {
+interface ModelOptions {
   size: number
   type?: string
 }
@@ -31,18 +22,10 @@ export type predictionType = {
   probability: number
 }
 
-const BASE_PATH =
-  // OLD S3 "https://s3.amazonaws.com/ir_public/nsfwjscdn/TFJS_nsfw_mobilenet/tfjs_quant_nsfw_mobilenet/";
-  'https://d1zv2aa70wpiur.cloudfront.net/tfjs_quant_nsfw_mobilenet/'
+const BASE_PATH = 'https://d1zv2aa70wpiur.cloudfront.net/tfjs_quant_nsfw_mobilenet'
 const IMAGE_SIZE = 224 // default to Mobilenet v2
 
-export async function load(base = BASE_PATH, options: nsfwjsOptions = { size: IMAGE_SIZE }) {
-  if (tf == null) {
-    throw new Error(
-      `Cannot find TensorFlow.js. If you are using a <script> tag, please ` +
-        `also include @tensorflow/tfjs on the page before using this model.`
-    )
-  }
+export const loadModel = async (base = BASE_PATH, options: ModelOptions = { size: IMAGE_SIZE }) => {
   // Default size is IMAGE_SIZE - needed if just type option is used
   options.size = options.size || IMAGE_SIZE
   const nsfwnet = new NSFWJS(base, options)
@@ -50,45 +33,56 @@ export async function load(base = BASE_PATH, options: nsfwjsOptions = { size: IM
   return nsfwnet
 }
 
-interface IOHandler {
-  load: () => any
+const getTopKClasses = async (logits: tf.Tensor2D, topK: number): Promise<Array<predictionType>> => {
+  const values = await logits.data()
+
+  const valuesAndIndices = []
+  for (let i = 0; i < values.length; i++) {
+    valuesAndIndices.push({ value: values[i], index: i })
+  }
+  valuesAndIndices.sort((a, b) => {
+    return b.value - a.value
+  })
+  const topkValues = new Float32Array(topK)
+  const topkIndices = new Int32Array(topK)
+  for (let i = 0; i < topK; i++) {
+    topkValues[i] = valuesAndIndices[i].value
+    topkIndices[i] = valuesAndIndices[i].index
+  }
+
+  const topClassesAndProbs: predictionType[] = []
+  for (let i = 0; i < topkIndices.length; i++) {
+    const index = topkIndices[i]
+    topClassesAndProbs.push({
+      className: Object.values(NSFW_CLASSES)[index] as NSFW_CLASSES, // TODO: double check this
+      probability: topkValues[i]
+    })
+  }
+  return topClassesAndProbs
 }
 
 export class NSFWJS {
   public endpoints: string[] = []
   public model: tf.LayersModel | tf.GraphModel | undefined
 
-  private options: nsfwjsOptions
-  private pathOrIOHandler: string | IOHandler
+  private options: ModelOptions
+  private path: string
   private intermediateModels: { [layerName: string]: tf.LayersModel } = {}
   private normalizationOffset: tf.Scalar
 
-  constructor(modelPathBaseOrIOHandler: string | IOHandler, options: nsfwjsOptions) {
+  constructor(cdnUrl: string, options: ModelOptions) {
     this.options = options
     this.normalizationOffset = tf.scalar(255)
-
-    if (
-      typeof modelPathBaseOrIOHandler === 'string' &&
-      !modelPathBaseOrIOHandler.startsWith('indexeddb://') &&
-      !modelPathBaseOrIOHandler.startsWith('localstorage://')
-    ) {
-      if (modelPathBaseOrIOHandler.endsWith('model.json')) {
-        this.pathOrIOHandler = modelPathBaseOrIOHandler
-      } else {
-        this.pathOrIOHandler = `${modelPathBaseOrIOHandler}model.json`
-      }
-    } else {
-      this.pathOrIOHandler = modelPathBaseOrIOHandler
-    }
+    this.path = `${cdnUrl}/model.json`
   }
 
   async load() {
     const { size, type } = this.options
     if (type === 'graph') {
-      this.model = await tf.loadGraphModel(this.pathOrIOHandler)
+      this.model = await tf.loadGraphModel(this.path)
     } else {
       // this is a Layers Model
-      this.model = await tf.loadLayersModel(this.pathOrIOHandler)
+      this.model = await tf.loadLayersModel(this.path)
       this.endpoints = this.model.layers.map((l) => l.name)
     }
 
@@ -139,12 +133,10 @@ export class NSFWJS {
       if (endpoint == null) {
         model = this.model!
       } else {
-        if (this.model!.hasOwnProperty('layers') && this.intermediateModels[endpoint] == null) {
-          // @ts-ignore
-          const layer = this.model.layers.find((l) => l.name === endpoint)
+        if ((this.model as tf.LayersModel)?.layers && this.intermediateModels[endpoint] == null) {
+          const layer = (this.model as tf.LayersModel).layers.find((l) => l.name === endpoint)!
           this.intermediateModels[endpoint] = tf.model({
-            // @ts-ignore
-            inputs: this.model.inputs,
+            inputs: (this.model as tf.LayersModel).inputs,
             outputs: layer.output
           })
         }
@@ -169,38 +161,8 @@ export class NSFWJS {
     topk = 5
   ): Promise<Array<predictionType>> {
     const logits = this.infer(img) as tf.Tensor2D
-
     const classes = await getTopKClasses(logits, topk)
-
     logits.dispose()
-
     return classes
   }
-}
-
-async function getTopKClasses(logits: tf.Tensor2D, topK: number): Promise<Array<predictionType>> {
-  const values = await logits.data()
-
-  const valuesAndIndices = []
-  for (let i = 0; i < values.length; i++) {
-    valuesAndIndices.push({ value: values[i], index: i })
-  }
-  valuesAndIndices.sort((a, b) => {
-    return b.value - a.value
-  })
-  const topkValues = new Float32Array(topK)
-  const topkIndices = new Int32Array(topK)
-  for (let i = 0; i < topK; i++) {
-    topkValues[i] = valuesAndIndices[i].value
-    topkIndices[i] = valuesAndIndices[i].index
-  }
-
-  const topClassesAndProbs: predictionType[] = []
-  for (let i = 0; i < topkIndices.length; i++) {
-    topClassesAndProbs.push({
-      className: NSFW_CLASSES[topkIndices[i]],
-      probability: topkValues[i]
-    })
-  }
-  return topClassesAndProbs
 }

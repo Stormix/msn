@@ -1,17 +1,18 @@
+import PermissionDialog from '@/components/molecules/permission-dialog'
 import { useToast } from '@/components/ui/use-toast'
 import { useUserMedia } from '@/hooks/useUserMedia'
-import { load } from '@/lib/nsfw'
+import { loadModel } from '@/lib/nsfw'
 import { useStore } from '@/lib/store'
-import { PayloadType, User } from '@/types'
+import { PayloadType, User, UserState } from '@/types'
 import Peer, { MediaConnection } from 'peerjs'
 import React, { createContext, useContext, useEffect, useRef } from 'react'
 import useWebSocket from 'react-use-websocket'
 
-type OmegleProviderProps = {
+type WebRTCProviderProps = {
   children: React.ReactNode
 }
 
-type OmegleProviderState = {
+type WebRTCProviderState = {
   sendMessage?: (message: string) => void
   connect?: () => void
   setName?: (name: string) => void
@@ -24,7 +25,7 @@ type OmegleProviderState = {
   stream?: MediaStream
 }
 
-const initialState: OmegleProviderState = {
+const initialState: WebRTCProviderState = {
   sendMessage: undefined,
   connect: undefined,
   call: undefined,
@@ -36,9 +37,9 @@ const initialState: OmegleProviderState = {
   stream: undefined
 }
 
-const OmegleProviderContext = createContext<OmegleProviderState>(initialState)
+const WebRTCProviderContext = createContext<WebRTCProviderState>(initialState)
 
-export function OmegleProvider({ children }: OmegleProviderProps) {
+export const WebRTCProvider = ({ children }: WebRTCProviderProps) => {
   const { toast } = useToast()
   const {
     addMessage,
@@ -134,7 +135,7 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
     }
   }
 
-  const { stream } = useUserMedia({
+  const { stream, denied, tryAgain } = useUserMedia({
     constraints: {
       audio: true,
       video: true
@@ -152,8 +153,9 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
     onMessage
   })
 
+  // Handle incoming calls
   useEffect(() => {
-    if (!peer || !stream || me?.state === 'connected' || currentCall) return
+    if (!peer || !stream || me?.state === UserState.Connected || currentCall) return
 
     peer?.on('call', (call) => {
       if (!call) return
@@ -170,16 +172,17 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
     })
   }, [currentCall, disconnect, me?.state, peer, setCall, setStranger, stream])
 
+  // Handle model loading for NSFW detection
   useEffect(() => {
     ;(async () => {
       if (model) return
-      const downloadedModel = await load()
+      const downloadedModel = await loadModel()
       setModel(downloadedModel)
     })()
   }, [model, setModel])
 
   return (
-    <OmegleProviderContext.Provider
+    <WebRTCProviderContext.Provider
       value={{
         emitTyping: (typing: boolean) => {
           ws.sendJsonMessage({
@@ -232,14 +235,13 @@ export function OmegleProvider({ children }: OmegleProviderProps) {
       }}
     >
       {children}
-    </OmegleProviderContext.Provider>
+      <PermissionDialog open={denied} onSubmit={tryAgain} />
+    </WebRTCProviderContext.Provider>
   )
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
-export const useOmegle = () => {
-  const context = useContext(OmegleProviderContext)
-  if (context === undefined) throw new Error('useTheme must be used within a OmegleProvider')
-
+export const useWebRTC = () => {
+  const context = useContext(WebRTCProviderContext)
+  if (context === undefined) throw new Error('useTheme must be used within a WebRTCProvider')
   return context
 }

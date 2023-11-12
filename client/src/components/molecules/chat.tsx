@@ -3,7 +3,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormMessage } 
 import useNudityModerator from '@/hooks/useNudityModerator'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
-import { useOmegle } from '@/providers/omegle-provider'
+import { useWebRTC } from '@/providers/webrtc-provider'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Send } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -24,7 +24,7 @@ const Chat = () => {
 
   const ref = useRef<HTMLDivElement>(null)
   const { messages, me } = useStore()
-  const { sendMessage, stranger, emitTyping: setTyping, stream } = useOmegle()
+  const { sendMessage, stranger, emitTyping: setTyping, stream } = useWebRTC()
   const { toast } = useToast()
   const [meTyping, setMeTyping] = useState(false)
 
